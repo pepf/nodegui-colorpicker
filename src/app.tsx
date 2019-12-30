@@ -34,13 +34,14 @@ class App extends React.Component<{}, AppState> {
       position: {x: 0, y: 0},
       backgroundColor: "grey",
       img: {},
-      pixel: {}
+      pixel: {},
+      selectedPixel: {}
     }
   }
 
   render() {
     const {x,y} = this.state.position
-    const {img, pixel} = this.state
+    const {img, pixel, selectedPixel} = this.state
 
     const handler = {
       [QWidgetEvents.MouseMove]: (e: any) => {
@@ -55,6 +56,9 @@ class App extends React.Component<{}, AppState> {
           const pixel = getPixelColor(mappedX, mappedY)
           this.setState({pixel})
         }
+      },
+      [QWidgetEvents.MouseButtonRelease]: (e:any) => {
+        this.setState({selectedPixel: this.state.pixel})
       }
     };
 
@@ -83,12 +87,16 @@ class App extends React.Component<{}, AppState> {
         mouseTracking={true}
         on={handler}
         style={containerStyle}>
-          <View style={`background-color: rgb(${pixel.r},${pixel.g},${pixel.b}); height: 50px`}>
+          <View style={`height: 75px`}>
             <Text>{`The mouse position is: ${x} - ${y}`}</Text>
-            <Text>
-              {!this.state.img.width ? "No screenshot captured yet" : " "}
+            <View id="row">
+              <Button on={buttonHandler} text={"📸"}/>
+              <Text>
+                {!this.state.img.width ? "No screenshot captured yet" : " "}
               </Text>
-            <Button on={buttonHandler} text={"Retake screen"}/>
+              <View id="hover" style={`background-color: rgb(${pixel.r},${pixel.g},${pixel.b});`}></View>
+              {selectedPixel.r ?  <View id="selected" style={`background-color: rgb(${selectedPixel.r},${selectedPixel.g},${selectedPixel.b});`}></View> : null}
+            </View>
           </View>
 
           {/* {testImage ?
@@ -111,10 +119,16 @@ const containerStyle = `
 `;
 
 const styleSheet = `
-  #welcome-text {
-    font-size: 24px;
-    padding-top: 20px;
-    qproperty-alignment: 'AlignHCenter';
+  #row {
+    flex: 1;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  #selected, #hover {
+    width: 50px;
+    height: 50px;
+    border: 1px solid white;
   }
 `;
 

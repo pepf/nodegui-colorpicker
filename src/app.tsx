@@ -1,6 +1,17 @@
 import React from "react";
 import { Text, Window, hot, View, Button, Image } from "@nodegui/react-nodegui";
-import { QIcon, QPushButtonEvents, QMainWindowEvents, QWidgetEvents, QMouseEvent, AspectRatioMode, WindowType, WidgetAttribute } from "@nodegui/nodegui";
+import {
+  QIcon,
+  QPushButtonEvents,
+  QWidgetEvents,
+  QPushButtonSignals,
+  QWidgetSignals,
+  QMouseEvent,
+  AspectRatioMode,
+  WindowType,
+  WidgetAttribute,
+  WidgetEventTypes } from "@nodegui/nodegui";
+import { setTitleBarStyle } from '@nodegui/plugin-title-bar'
 import path from "path";
 import open from "open";
 import os from "os"
@@ -42,16 +53,8 @@ class App extends React.Component<{}, AppState> {
 
   componentDidMount() {
     if(!this.windowRef) return
-    const win = this.windowRef.current
-    win.hide(); //https://forum.qt.io/topic/60642/framelesswindowhint-fails-at-runtime-on-mainwindow
-    // win.resize(300, 300);
-
-    win.setWindowFlag(WindowType.FramelessWindowHint, true);
-    win.setWindowFlag(WindowType.Widget, true);
-    if (os.platform() === "darwin") {
-      win.setAttribute(WidgetAttribute.WA_TranslucentBackground, true);
-    }
-    win.show();
+    const win = this.windowRef.current;
+    setTitleBarStyle(win.native, 'hidden')
   }
 
   render() {
@@ -59,10 +62,9 @@ class App extends React.Component<{}, AppState> {
     const {img, pixel, selectedPixel} = this.state
 
     const handler = {
-      [QWidgetEvents.MouseMove]: (e: any) => {
+      [WidgetEventTypes.MouseMove]: (e: any) => {
         const event = new QMouseEvent(e);
         this.setState({position: {x: event.x(), y: event.y()}})
-        // console.log("mouse moved!", event.button(), event.x(), event.y())
 
         // If image is loaded
         if (this.state.img.width) {
@@ -72,13 +74,13 @@ class App extends React.Component<{}, AppState> {
           this.setState({pixel})
         }
       },
-      [QWidgetEvents.MouseButtonRelease]: (e:any) => {
+      [WidgetEventTypes.MouseButtonPress]: (e:any) => {
         this.setState({selectedPixel: this.state.pixel})
       }
     };
 
     const buttonHandler = {
-      [QWidgetEvents.MouseButtonRelease]: (e: any) => {
+      [WidgetEventTypes.MouseButtonRelease]: (e: any) => {
         const FILE = "screenshot.png"
         const tmpScreenshotFile = path.resolve(rootDir, `tmp/${FILE}`);
         takeScreenshot(tmpScreenshotFile).then(() => {
@@ -94,7 +96,7 @@ class App extends React.Component<{}, AppState> {
     return (
       <Window
         windowIcon={winIcon}
-        windowTitle="Hello 👋🏽"
+        windowTitle="💅🏼 Color picker"
         minSize={minSize}
         styleSheet={styleSheet}
         ref={this.windowRef}
@@ -105,11 +107,11 @@ class App extends React.Component<{}, AppState> {
         style={containerStyle}>
           <View id="header">
             <Text>{`The mouse position is: ${x} - ${y}`}</Text>
+            <Text>
+              {!this.state.img.width ? "No screenshot captured yet" : " "}
+            </Text>
             <View id="row">
-              <Button on={buttonHandler} text={"📸"}/>
-              <Text>
-                {!this.state.img.width ? "No screenshot captured yet" : " "}
-              </Text>
+              <Button style={`padding: 10px`} on={buttonHandler} text={"📸"}/>
               <View id="hover" style={`background-color: rgb(${pixel.r},${pixel.g},${pixel.b});`}></View>
               {selectedPixel.r ?  <View id="selected" style={`background-color: rgb(${selectedPixel.r},${selectedPixel.g},${selectedPixel.b});`}></View> : null}
             </View>
@@ -128,15 +130,19 @@ const containerStyle = `
 const styleSheet = `
  #header {
    padding: 10px;
-   height: 75px;
+   padding-top: 30px;
+   min-height: 75px;
    background-color: #efefef;
+ }
+ #header * {
+   margin-right: 10px;
  }
 
   #row {
     flex: 1;
     flex-direction: row;
     align-items: flex-start;
-    justify-content: space-between;
+    justify-content: flex-start;
   }
   #selected, #hover {
     width: 50px;

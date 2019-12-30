@@ -11,8 +11,10 @@
     "start": "qode --inspect ./dist/index.js"
   },
   "dependencies": {
-    "@nodegui/nodegui": "^0.5.1",
-    "@nodegui/react-nodegui": "^0.2.2",
+    "@nodegui/nodegui": "^0.12.1",
+    "@nodegui/plugin-title-bar": "^0.0.1",
+    "@nodegui/qode": "^1.0.6",
+    "@nodegui/react-nodegui": "^0.4.0",
     "jimp-compact": "^0.8.5",
     "open": "^7.0.0",
     "react": "^16.11.0"

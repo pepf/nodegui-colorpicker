@@ -1,9 +1,9 @@
 import React from "react";
 import { Text, Window, hot, View, Button, Image } from "@nodegui/react-nodegui";
-import { QIcon, QPushButtonEvents, QMainWindowEvents, QWidgetEvents, QMouseEvent, AspectRatioMode } from "@nodegui/nodegui";
+import { QIcon, QPushButtonEvents, QMainWindowEvents, QWidgetEvents, QMouseEvent, AspectRatioMode, WindowType, WidgetAttribute } from "@nodegui/nodegui";
 import path from "path";
 import open from "open";
-// import Jimp from "jimp-compact";
+import os from "os"
 
 import { loadImage, getPixelColor, takeScreenshot } from "./loadImage";
 import nodeguiIcon from "../assets/nodegui.jpg";
@@ -30,6 +30,7 @@ class App extends React.Component<{}, AppState> {
 
   constructor(props: any) {
     super(props)
+    this.windowRef = React.createRef()
     this.state = {
       position: {x: 0, y: 0},
       backgroundColor: "grey",
@@ -37,6 +38,20 @@ class App extends React.Component<{}, AppState> {
       pixel: {},
       selectedPixel: {}
     }
+  }
+
+  componentDidMount() {
+    if(!this.windowRef) return
+    const win = this.windowRef.current
+    win.hide(); //https://forum.qt.io/topic/60642/framelesswindowhint-fails-at-runtime-on-mainwindow
+    // win.resize(300, 300);
+
+    win.setWindowFlag(WindowType.FramelessWindowHint, true);
+    win.setWindowFlag(WindowType.Widget, true);
+    if (os.platform() === "darwin") {
+      win.setAttribute(WidgetAttribute.WA_TranslucentBackground, true);
+    }
+    win.show();
   }
 
   render() {
@@ -82,12 +97,13 @@ class App extends React.Component<{}, AppState> {
         windowTitle="Hello 👋🏽"
         minSize={minSize}
         styleSheet={styleSheet}
+        ref={this.windowRef}
       >
         <View
         mouseTracking={true}
         on={handler}
         style={containerStyle}>
-          <View style={`height: 75px`}>
+          <View id="header">
             <Text>{`The mouse position is: ${x} - ${y}`}</Text>
             <View id="row">
               <Button on={buttonHandler} text={"📸"}/>
@@ -99,15 +115,6 @@ class App extends React.Component<{}, AppState> {
             </View>
           </View>
 
-          {/* {testImage ?
-          <Image
-            id="img"
-            aspectRatioMode={null}
-            width={400}
-            height={400}
-            src={"assets/trippy.png"}
-          />
-          : null } */}
         </View>
       </Window>
     );
@@ -119,6 +126,12 @@ const containerStyle = `
 `;
 
 const styleSheet = `
+ #header {
+   padding: 10px;
+   height: 75px;
+   background-color: #efefef;
+ }
+
   #row {
     flex: 1;
     flex-direction: row;

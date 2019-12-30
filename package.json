@@ -13,6 +13,7 @@
   "dependencies": {
     "@nodegui/nodegui": "^0.5.1",
     "@nodegui/react-nodegui": "^0.2.2",
+    "jimp-compact": "^0.8.5",
     "open": "^7.0.0",
     "react": "^16.11.0"
   },

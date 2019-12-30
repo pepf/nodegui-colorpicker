@@ -18,13 +18,15 @@ import os from "os"
 
 import { loadImage, getPixelColor, takeScreenshot } from "./loadImage";
 import nodeguiIcon from "../assets/nodegui.jpg";
-import testImage from "../assets/trippy.png";
 
 const map = function (in_min: number, in_max: number, out_min: number, out_max: number, value: number): number {
   return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 const rootDir = path.resolve(__dirname, "..");
+
+const FILE = "screenshot.png"
+const tmpScreenshotFile = path.resolve(rootDir, `tmp/${FILE}`);
 
 const width = 500;
 const height = 500;
@@ -81,8 +83,6 @@ class App extends React.Component<{}, AppState> {
 
     const buttonHandler = {
       [WidgetEventTypes.MouseButtonRelease]: (e: any) => {
-        const FILE = "screenshot.png"
-        const tmpScreenshotFile = path.resolve(rootDir, `tmp/${FILE}`);
         takeScreenshot(tmpScreenshotFile).then(() => {
           console.log("Loading screenshot in...")
           loadImage(tmpScreenshotFile).then(img => {
@@ -93,17 +93,24 @@ class App extends React.Component<{}, AppState> {
       }
     }
 
+    const windowHandler = {
+      [WidgetEventTypes.WindowDeactivate]: (e: any) => {
+        console.log(e)
+
+      }
+    }
+
     return (
       <Window
         windowIcon={winIcon}
         windowTitle="💅🏼 Color picker"
         minSize={minSize}
+        on={windowHandler}
         styleSheet={styleSheet}
         ref={this.windowRef}
       >
         <View
-        mouseTracking={true}
-        on={handler}
+        // on={handler}
         style={containerStyle}>
           <View id="header">
             <Text>{`The mouse position is: ${x} - ${y}`}</Text>
@@ -116,6 +123,11 @@ class App extends React.Component<{}, AppState> {
               {selectedPixel.r ?  <View id="selected" style={`background-color: rgb(${selectedPixel.r},${selectedPixel.g},${selectedPixel.b});`}></View> : null}
             </View>
           </View>
+          <Image id="img"
+            on={handler}
+            mouseTracking={true}
+            aspectRatioMode={AspectRatioMode.KeepAspectRatio}
+            src={tmpScreenshotFile} />
 
         </View>
       </Window>
@@ -128,6 +140,12 @@ const containerStyle = `
 `;
 
 const styleSheet = `
+  #img {
+    flex: 1;
+    align-self: center;
+    width: 1000px;
+    overflow: hidden;
+  }
  #header {
    padding: 10px;
    padding-top: 30px;

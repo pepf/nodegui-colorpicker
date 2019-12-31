@@ -1,3 +1,7 @@
+import path from "path";
+import open from "open";
+import os from "os"
+
 import React from "react";
 import { Text, Window, hot, View, Button, Image } from "@nodegui/react-nodegui";
 import {
@@ -10,14 +14,17 @@ import {
   AspectRatioMode,
   WindowType,
   WidgetAttribute,
-  WidgetEventTypes } from "@nodegui/nodegui";
+  WidgetEventTypes,
+  NodeWidget,
+  QMainWindow,
+  QSize
+} from "@nodegui/nodegui";
 import { setTitleBarStyle } from '@nodegui/plugin-title-bar'
-import path from "path";
-import open from "open";
-import os from "os"
 
 import { loadImage, getPixelColor, takeScreenshot } from "./loadImage";
+import { savePosition, restorePosition } from "./window";
 import nodeguiIcon from "../assets/nodegui.jpg";
+import ColorBox from "./components/ColorBox";
 
 const map = function (in_min: number, in_max: number, out_min: number, out_max: number, value: number): number {
   return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -29,7 +36,7 @@ const FILE = "screenshot.png"
 const tmpScreenshotFile = path.resolve(rootDir, `tmp/${FILE}`);
 
 const width = 500;
-const height = 500;
+const height = 100;
 
 const minSize = { width, height };
 const winIcon = new QIcon(path.resolve(__dirname, nodeguiIcon));
@@ -37,16 +44,24 @@ const winIcon = new QIcon(path.resolve(__dirname, nodeguiIcon));
 
 type AppState = {
   position: {x: number, y: number},
-  backgroundColor: string
+  img: object,
+  pixel: object,
+  selectedPixel: object
+}
+
+type WindowRef = {
+  current: NodeWidget
 }
 class App extends React.Component<{}, AppState> {
+
+  windowRef: WindowRef
 
   constructor(props: any) {
     super(props)
     this.windowRef = React.createRef()
     this.state = {
       position: {x: 0, y: 0},
-      backgroundColor: "grey",
+      isPicking: false,
       img: {},
       pixel: {},
       selectedPixel: {}
@@ -56,78 +71,76 @@ class App extends React.Component<{}, AppState> {
   componentDidMount() {
     if(!this.windowRef) return
     const win = this.windowRef.current;
-    setTitleBarStyle(win.native, 'hidden')
+    // setTitleBarStyle(win.native, 'hidden')
+    win.hide();
+    win.setWindowFlag(WindowType.FramelessWindowHint, true);
+    win.setWindowFlag(WindowType.Widget, true);
+    if (os.platform() === "darwin") {
+      win.setAttribute(WidgetAttribute.WA_TranslucentBackground, true);
+    }
+    win.show();
   }
 
   render() {
     const {x,y} = this.state.position
-    const {img, pixel, selectedPixel} = this.state
+    const {img, pixel, isPicking, selectedPixel} = this.state
 
     const handler = {
       [WidgetEventTypes.MouseMove]: (e: any) => {
         const event = new QMouseEvent(e);
-        this.setState({position: {x: event.x(), y: event.y()}})
+        this.setState({position: {x: event.globalX(), y: event.globalY()}})
 
         // If image is loaded
         if (this.state.img.width) {
-          const mappedX = map(0, width, 0, this.state.img.width, event.x())
-          const mappedY = map(0, height, 0, this.state.img.height, event.y())
-          const pixel = getPixelColor(mappedX, mappedY)
+          // If retina, image is twice the size of the reported pxs
+          const pixel = getPixelColor(event.globalX() * 2, event.globalY() * 2)
           this.setState({pixel})
         }
       },
-      [WidgetEventTypes.MouseButtonPress]: (e:any) => {
-        this.setState({selectedPixel: this.state.pixel})
+      [WidgetEventTypes.MouseButtonRelease]: (e:any) => {
+        this.setState({isPicking: false, selectedPixel: this.state.pixel})
+        restorePosition(this.windowRef)
       }
     };
 
     const buttonHandler = {
       [WidgetEventTypes.MouseButtonRelease]: (e: any) => {
         takeScreenshot(tmpScreenshotFile).then(() => {
-          console.log("Loading screenshot in...")
+          savePosition(this.windowRef)
+          this.windowRef.current.setGeometry(0,0, 1680, 1000)
           loadImage(tmpScreenshotFile).then(img => {
             const {width, height} = img.bitmap
-            this.setState({img: {width, height}})
+            this.setState({isPicking: true, img: {width, height}})
           })
         })
       }
     }
-
-    const windowHandler = {
-      [WidgetEventTypes.WindowDeactivate]: (e: any) => {
-        console.log(e)
-
-      }
-    }
-
     return (
       <Window
         windowIcon={winIcon}
         windowTitle="💅🏼 Color picker"
         minSize={minSize}
-        on={windowHandler}
         styleSheet={styleSheet}
         ref={this.windowRef}
-      >
+        >
         <View
-        // on={handler}
+        on={handler}
+        mouseTracking={true}
         style={containerStyle}>
           <View id="header">
-            <Text>{`The mouse position is: ${x} - ${y}`}</Text>
             <Text>
-              {!this.state.img.width ? "No screenshot captured yet" : " "}
+              {isPicking ? `The mouse position is: ${x} - ${y}`: "Click the camera to begin picking"}
             </Text>
             <View id="row">
               <Button style={`padding: 10px`} on={buttonHandler} text={"📸"}/>
-              <View id="hover" style={`background-color: rgb(${pixel.r},${pixel.g},${pixel.b});`}></View>
-              {selectedPixel.r ?  <View id="selected" style={`background-color: rgb(${selectedPixel.r},${selectedPixel.g},${selectedPixel.b});`}></View> : null}
+              <ColorBox color={isPicking ? pixel : selectedPixel} />
             </View>
           </View>
-          <Image id="img"
+          {/* <Image id="img"
             on={handler}
             mouseTracking={true}
             aspectRatioMode={AspectRatioMode.KeepAspectRatio}
-            src={tmpScreenshotFile} />
+            src={tmpScreenshotFile} /> */}
 
         </View>
       </Window>
@@ -142,7 +155,6 @@ const containerStyle = `
 const styleSheet = `
   #img {
     flex: 1;
-    align-self: center;
     width: 1000px;
     overflow: hidden;
   }
@@ -150,10 +162,8 @@ const styleSheet = `
    padding: 10px;
    padding-top: 30px;
    min-height: 75px;
+   width: 400px;
    background-color: #efefef;
- }
- #header * {
-   margin-right: 10px;
  }
 
   #row {
@@ -163,6 +173,7 @@ const styleSheet = `
     justify-content: flex-start;
   }
   #selected, #hover {
+    margin-left: 10px;
     width: 50px;
     height: 50px;
     border: 1px solid white;
